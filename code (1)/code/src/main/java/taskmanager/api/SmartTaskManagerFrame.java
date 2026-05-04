@@ -1,20 +1,18 @@
 package taskmanager.api;
 
-import taskmanager.api.TaskManager;
-import taskmanager.api.TaskNotFoundException;
-import taskmanager.api.Task;
-import taskmanager.api.WeatherForecast;
-import taskmanager.api.TaskService;
-import taskmanager.api.SchedulePlanner;
+import java.awt.BorderLayout;
+import java.util.List;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableModel;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.time.LocalDateTime;
-import java.util.List;
 
 public class SmartTaskManagerFrame extends JFrame {
 
@@ -31,7 +29,7 @@ public class SmartTaskManagerFrame extends JFrame {
 
     public SmartTaskManagerFrame(TaskManager taskManager) {
         this.taskManager = taskManager;
-        this.taskService = /* students will initialize from taskManager impl */;
+        this.taskService = new taskmanager.impl.TaskServiceImpl();
         this.schedulePlanner = taskManager.getPlanner();
 
         setTitle("Smart Task Manager (Swing)");
@@ -94,9 +92,22 @@ public class SmartTaskManagerFrame extends JFrame {
                 .subscribeOn(Schedulers.boundedElastic())
                 .doOnNext(forecast -> SwingUtilities.invokeLater(() -> {
                     // Simple weather‑aware status logic
-                    String status = forecast.getPrecipitationProbability() > 0.6
-                            ? "RISKY (rain)"
-                            : "SAFE";
+                    Task selectedTask = taskManager.getTasks()
+                             .stream()
+                             .filter(t -> t.getId().equals(taskId))
+                             .findFirst()
+                             .orElse(null);
+
+                    String status;
+
+                    if (selectedTask != null && selectedTask.isWeatherSensitive()
+                             && forecast.getPrecipitationProbability() > 0.6) {
+
+                         status = "RISKY (rain)";
+
+                    } else {
+                         status = "SAFE";
+                    }
 
                     updateTaskStatusInTable(taskId, status);
                     statusLabel.setText("Weather updated for task: " + taskId);
