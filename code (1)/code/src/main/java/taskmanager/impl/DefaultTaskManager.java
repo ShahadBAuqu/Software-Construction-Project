@@ -1,6 +1,9 @@
 package taskmanager.impl;
 
-import java.time.LocalDateTime;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 
 import reactor.core.publisher.Mono;
@@ -21,6 +24,7 @@ public class DefaultTaskManager implements TaskManager {
 
     private final TaskService taskService;
     private final SchedulePlanner planner;
+    private final String apiKey;
 
     /**
      * Constructs the TaskManager with required dependencies.
@@ -30,6 +34,7 @@ public class DefaultTaskManager implements TaskManager {
     public DefaultTaskManager(String apiKey) {
         this.taskService = new TaskServiceImpl();
         this.planner = new SchedulePlannerImpl(this);
+        this.apiKey = apiKey;
     }
 
     /**
@@ -77,28 +82,113 @@ public class DefaultTaskManager implements TaskManager {
      * Fetches weather information asynchronously.
      * Preconditions: location must not be null or empty
      * Postconditions: returns a WeatherForecast wrapped in Mono
-     * Side effects: may perform external API call (simulated here)
      *
      * @param location the city/location name
      * @return Mono containing WeatherForecast
      * @throws WeatherAPIException if fetching fails
      */
+    
     @Override
     public Mono<WeatherForecast> fetchWeather(String location) {
-        return Mono.fromSupplier(() -> {
-            if (location == null || location.isEmpty()) {
-                throw new WeatherAPIException("Invalid location", null);
+
+    String url =
+        "https://api.openweathermap.org/data/2.5/weather?q="
+        + location
+        + "&appid="
+        + apiKey
+        + "&units=metric";
+
+    HttpClient client = HttpClient.newHttpClient();
+
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .build();
+
+    return Mono.fromFuture(
+            client.sendAsync(
+                    request,
+                    HttpResponse.BodyHandlers.ofString()
+            )
+    )
+    .map(HttpResponse::body)
+    .map(response -> {
+
+        try {
+
+            double temperature = 25.0;
+            String condition = "Clear";
+            double precipitation = 0.0;
+
+            if (response.contains("\"all\":")) {
+
+                try {
+
+                    String precipitationPart =
+                            response.split("\"all\":")[1]
+                                    .split("}")[0]
+                                    .trim();
+
+                    precipitation =
+                            Double.parseDouble(precipitationPart) / 100.0;
+
+                } catch (Exception e) {
+
+                    precipitation = 0.0;
+
+                }
             }
 
-            return new WeatherForecast(
-                    location,
-                    LocalDateTime.now(),
-                    30.0,
-                    "Sunny",
-                    0.8
+            if (response.contains("\"temp\":")) {
+
+                String tempPart =
+                        response.split("\"temp\":")[1]
+                                .split(",")[0];
+
+                temperature =
+                        Double.parseDouble(tempPart);
+
+            }
+
+            if (response.contains("\"main\":\"")) {
+
+                String conditionPart =
+                        response.split("\"main\":\"")[1]
+                                .split("\"")[0];
+
+                condition = conditionPart;
+
+            }
+
+            WeatherForecast forecast =
+                    new WeatherForecast(
+                            location,
+                            java.time.LocalDateTime.now(),
+                            temperature,
+                            condition,
+                            precipitation
+                    );
+
+            return forecast;
+
+        } catch (Exception e) {
+
+            throw new WeatherAPIException(
+                    "Failed to parse weather data",
+                    e
             );
-        });
-    }
+
+        }
+
+    })
+    .onErrorMap(error ->
+            new WeatherAPIException(
+                    "Failed to fetch weather data",
+                error
+            )
+    );
+
+}
 
     /**
      * Returns the schedule planner instance.

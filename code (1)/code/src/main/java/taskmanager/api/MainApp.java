@@ -8,7 +8,7 @@ public class MainApp {
     public static void main(String[] args) {
         // Build the TaskManager (students will implement DefaultTaskManager)
         TaskManager tm = TaskManager.builder()
-                .withWeatherApiKey("YOUR_API_KEY_HERE")
+                .withWeatherApiKey("f99ed98ee5c2f91eff983687c0cd8d28")
                 .build();
 
         // Add a couple of test tasks
@@ -28,6 +28,10 @@ public class MainApp {
         tm.addTask(task1);
         tm.addTask(task2);
 
+        tm.fetchWeather("Makkah")
+          .subscribe(weather -> {
+              System.out.println(weather);
+          });
         System.out.println("Tasks loaded: " + tm.getTasks().size());
 
         // Wire this to the Swing UI

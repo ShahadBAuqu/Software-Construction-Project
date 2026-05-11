@@ -23,7 +23,6 @@ import reactor.core.scheduler.Schedulers;
 public class SmartTaskManagerFrame extends JFrame {
 
     private final TaskManager taskManager;
-    private final TaskService taskService;
     private final SchedulePlanner schedulePlanner;
 
     private final JTable taskTable;
@@ -35,7 +34,6 @@ public class SmartTaskManagerFrame extends JFrame {
 
     public SmartTaskManagerFrame(TaskManager taskManager) {
         this.taskManager = taskManager;
-        this.taskService = new taskmanager.impl.TaskServiceImpl();
         this.schedulePlanner = taskManager.getPlanner();
 
         setTitle("Smart Task Manager (Swing)");
